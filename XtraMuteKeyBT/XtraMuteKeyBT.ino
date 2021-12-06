@@ -1,6 +1,8 @@
 #include <BleKeyboard.h>
 #include <AceButton.h>
 #include <WiFi.h>
+#include "StateKeyboard.h"
+
 using namespace ace_button;
 
 #define DEBUG 1
@@ -12,6 +14,8 @@ long timeToSleep = 5*1000;
 boolean bleConnected = false;
 
 byte wakeupReason = 0;
+
+
 
 // define debugging MACROS
 #if DEBUG != 0
@@ -35,6 +39,8 @@ AceButton button(BUTTON_PIN);
 void handleEvent(AceButton*, uint8_t, uint8_t);
 
 BleKeyboard bleKeyboard;
+StateKeyboard stateKeyboard(&bleKeyboard);
+
 
 
 byte get_wakeup_reason(){
@@ -54,8 +60,6 @@ byte get_wakeup_reason(){
 }
 
 void setup() {
-
-  
   // put your setup code here, to run once:
   #if DEBUG != 0
     Serial.begin(115200);
@@ -63,8 +67,6 @@ void setup() {
   // Turn Wifi off to minimize power consumption
   WiFi.mode(WIFI_OFF);
   
-  //delay(100);
-  //Serial.print("\n\n");
   wakeupReason = get_wakeup_reason();
   
   pinMode(BUTTON_PIN, INPUT_PULLUP);
@@ -98,20 +100,12 @@ void loop() {
     if (wakeupReason == ESP_SLEEP_WAKEUP_EXT0)
     {
       delay(500);
-      executeKeyPress();   
+      //executeKeyPress();
+      stateKeyboard.executeKeyPress();
     }
   }
   bleConnected = bleKeyboard.isConnected();
-  
-  
   button.check();
-  
-}
-
-void executeKeyPress()
-{
-  SERIAL_DEBUG_LN("Execute Key Press");
-  bleKeyboard.print("p"); 
 }
 
 
@@ -120,13 +114,12 @@ void handleEvent(AceButton* /*button*/, uint8_t eventType,
   switch (eventType) {
     case AceButton::kEventPressed:
       SERIAL_DEBUG_LN("pressed");
-      executeKeyPress();
-      //digitalWrite(LED_PIN, HIGH);
+      stateKeyboard.keyPressed();
+      sleepTimerStart = millis();
       break;
     case AceButton::kEventReleased:
       SERIAL_DEBUG_LN("released");
       sleepTimerStart = millis();
-      //digitalWrite(LED_PIN, LOW);
       break;
   }
 }
