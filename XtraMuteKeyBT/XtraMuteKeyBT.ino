@@ -2,6 +2,7 @@
 #include <AceButton.h>
 #include <WiFi.h>
 #include "StateKeyboard.h"
+#include "Config.h"
 
 using namespace ace_button;
 
@@ -10,7 +11,7 @@ using namespace ace_button;
 const int BUTTON_PIN = GPIO_NUM_33;
 const int LED_PIN = LED_BUILTIN;
 long sleepTimerStart = 0;
-long timeToSleep = 5*1000;
+long timeToSleep = 120*1000;
 boolean bleConnected = false;
 
 byte wakeupReason = 0;
@@ -39,7 +40,9 @@ AceButton button(BUTTON_PIN);
 void handleEvent(AceButton*, uint8_t, uint8_t);
 
 BleKeyboard bleKeyboard;
-StateKeyboard stateKeyboard(&bleKeyboard);
+Config myconfig;
+StateKeyboard stateKeyboard(&bleKeyboard, &myconfig);
+
 
 
 
