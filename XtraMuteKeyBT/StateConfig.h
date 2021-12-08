@@ -1,18 +1,19 @@
 /*
-  StateKeyboard
+  StateConfig
 */
-#ifndef StateKeyboard_h
-#define StateKeyboard_h
+#ifndef StateConfig_h
+#define StateConfig_h
 
 #include "Arduino.h"
 #include <BleKeyboard.h>
 #include "Config.h"
 
-class StateKeyboard
+class StateConfig
 {
   public:
-    StateKeyboard(BleKeyboard *bleKeyboard, Config *myconfig);
+    StateConfig(BleKeyboard *bleKeyboard, Config *myconfig);
     void executeKey();
+    void startMode();
   private:
     BleKeyboard *_bleKeyboard;
     Config *_config;

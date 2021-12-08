@@ -16,6 +16,8 @@ class Config
   public:
     Config();
     void loadCurrentOption();
+    void next();
+    void begin();
     KEYOPTION currentOption;
     KEYOPTION _configOptions[13];
     int currentOptionID;

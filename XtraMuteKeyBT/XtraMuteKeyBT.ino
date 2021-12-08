@@ -1,12 +1,14 @@
 #include <BleKeyboard.h>
 #include <AceButton.h>
 #include <WiFi.h>
+#include "debug.h"
 #include "StateKeyboard.h"
+#include "StateConfig.h"
 #include "Config.h"
 
 using namespace ace_button;
 
-#define DEBUG 1
+
 
 const int BUTTON_PIN = GPIO_NUM_33;
 const int LED_PIN = LED_BUILTIN;
@@ -17,32 +19,17 @@ boolean bleConnected = false;
 byte wakeupReason = 0;
 
 
-
-// define debugging MACROS
-#if DEBUG != 0
-#define SERIAL_DEBUG_ADD(s) Serial.print(s);
-#define SERIAL_DEBUG_ADDF(format, ...) Serial.printf(format, __VA_ARGS__);
-#define SERIAL_DEBUG_EOL Serial.print("\n");
-#define SERIAL_DEBUG_BOL Serial.printf("DEBUG [%lu]: ", millis());
-#define SERIAL_DEBUG_LN(s) SERIAL_DEBUG_BOL SERIAL_DEBUG_ADD(s) SERIAL_DEBUG_EOL
-#define SERIAL_DEBUG_LNF(format, ...) SERIAL_DEBUG_BOL SERIAL_DEBUG_ADDF(format, __VA_ARGS__) SERIAL_DEBUG_EOL
-#else
-#define SERIAL_DEBUG_ADD(s) do{}while(0);
-#define SERIAL_DEBUG_ADDF(format, ...) do{}while(0);
-#define SERIAL_DEBUG_EOL do{}while(0);
-#define SERIAL_DEBUG_BOL do{}while(0);
-#define SERIAL_DEBUG_LN(s) do{}while(0);
-#define SERIAL_DEBUG_LNF(format, ...) do{}while(0);
-#endif
-
-
 AceButton button(BUTTON_PIN);
 void handleEvent(AceButton*, uint8_t, uint8_t);
 
 BleKeyboard bleKeyboard;
 Config myconfig;
 StateKeyboard stateKeyboard(&bleKeyboard, &myconfig);
+StateConfig stateConfig(&bleKeyboard, &myconfig);
 
+char currentState = 0;
+// 0 = keyboard
+// 1 = config
 
 
 
@@ -79,6 +66,15 @@ void setup() {
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_33,0); //1 = High, 0 = Low
   
   button.setEventHandler(handleEvent);
+  // Configure the ButtonConfig with the event handler.
+  ButtonConfig* buttonConfig = ButtonConfig::getSystemButtonConfig();
+  buttonConfig->setEventHandler(handleEvent);
+  buttonConfig->setFeature(ButtonConfig::kFeatureLongPress);
+  //buttonConfig->setFeature(ButtonConfig::kFeatureRepeatPress);
+  buttonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterLongPress);
+
+  myconfig.begin();
+  
   bleKeyboard.begin();
   sleepTimerStart = millis();
 }
@@ -104,7 +100,7 @@ void loop() {
     {
       delay(500);
       //executeKeyPress();
-      stateKeyboard.executeKeyPress();
+      stateKeyboard.executeKey();
     }
   }
   bleConnected = bleKeyboard.isConnected();
@@ -114,15 +110,38 @@ void loop() {
 
 void handleEvent(AceButton* /*button*/, uint8_t eventType,
     uint8_t /*buttonState*/) {
+  sleepTimerStart = millis();
+  SERIAL_DEBUG_LN("AceButton handleEvent");
+  SERIAL_DEBUG_LNF("eventType: %d", eventType);
+
   switch (eventType) {
+    case AceButton::kEventLongPressed:
+      SERIAL_DEBUG_LN("kEventLongPressed");
+      switch (currentState)
+      {
+        case 0:
+          currentState = 1;
+          stateConfig.startMode();
+        break;
+        case 1:
+          currentState = 0;
+        break;
+      }
+      break;
     case AceButton::kEventPressed:
-      SERIAL_DEBUG_LN("pressed");
-      stateKeyboard.keyPressed();
-      sleepTimerStart = millis();
+      SERIAL_DEBUG_LN("kEventPressed");
       break;
     case AceButton::kEventReleased:
-      SERIAL_DEBUG_LN("released");
-      sleepTimerStart = millis();
+      SERIAL_DEBUG_LN("kEventReleased");
+      switch (currentState)
+      {
+        case 0:
+          stateKeyboard.executeKey();
+        break;
+        case 1:
+          stateConfig.executeKey();
+        break;
+      }
       break;
   }
 }
