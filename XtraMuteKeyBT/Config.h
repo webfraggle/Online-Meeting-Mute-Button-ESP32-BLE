@@ -19,7 +19,7 @@ class Config
     void next();
     void begin();
     KEYOPTION currentOption;
-    KEYOPTION _configOptions[13];
+    KEYOPTION _configOptions[15];
     int currentOptionID;
 
   private:

@@ -24,8 +24,8 @@ void StateKeyboard::executeKey()
     
     if (_config->currentOption.keys[i] != 0)
     {
-//      SERIAL_DEBUG_LN(_config->currentOption.keys[i]);
-//      SERIAL_DEBUG_LN((int) _config->currentOption.keys[i]);
+      SERIAL_DEBUG_LN(_config->currentOption.keys[i]);
+      SERIAL_DEBUG_LN((int) _config->currentOption.keys[i]);
       _bleKeyboard->press(_config->currentOption.keys[i]);
     }
   }

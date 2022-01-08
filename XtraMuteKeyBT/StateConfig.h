@@ -14,9 +14,11 @@ class StateConfig
     StateConfig(BleKeyboard *bleKeyboard, Config *myconfig);
     void executeKey();
     void startMode();
+    void endMode();
   private:
     BleKeyboard *_bleKeyboard;
     Config *_config;
+    void printString(String str);
 };
 
 

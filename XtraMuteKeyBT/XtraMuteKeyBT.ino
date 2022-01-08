@@ -74,8 +74,10 @@ void setup() {
   buttonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterLongPress);
 
   myconfig.begin();
-  
+  bleKeyboard.setName("SingleButton Keyboard");
+  bleKeyboard.setDelay(50);
   bleKeyboard.begin();
+  
   sleepTimerStart = millis();
 }
 
@@ -101,6 +103,7 @@ void loop() {
       delay(500);
       //executeKeyPress();
       stateKeyboard.executeKey();
+      wakeupReason = 0;
     }
   }
   bleConnected = bleKeyboard.isConnected();
@@ -124,6 +127,7 @@ void handleEvent(AceButton* /*button*/, uint8_t eventType,
           stateConfig.startMode();
         break;
         case 1:
+          stateConfig.endMode();
           currentState = 0;
         break;
       }
