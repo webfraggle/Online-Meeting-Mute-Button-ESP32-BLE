@@ -1,6 +1,8 @@
 #include <BleKeyboard.h>
 #include <AceButton.h>
 #include <WiFi.h>
+#include <SPIFFS.h>
+#include <FastLED.h>
 #include "debug.h"
 #include "StateKeyboard.h"
 #include "StateConfig.h"
@@ -9,11 +11,19 @@
 using namespace ace_button;
 
 
+// wifi definition
+#include <WiFiManager.h> // https://github.com/tzapu/WiFiManager/tree/development
+WiFiManager wifiManager;
+bool wifiMangerPortalRunning = false;
+bool wifiConnected = false;
+
+WebServer webServer(80);
+
 
 const int BUTTON_PIN = GPIO_NUM_33;
 const int LED_PIN = LED_BUILTIN;
 long sleepTimerStart = 0;
-long timeToSleep = 120*1000;
+long timeToSleep = 15*60*1000;
 boolean bleConnected = false;
 
 byte wakeupReason = 0;
@@ -49,13 +59,66 @@ byte get_wakeup_reason(){
   }
 }
 
+
+// ######################## web server functions #########################
+
+String getRebootString() {
+    return "<html><head><meta http-equiv=\"refresh\" content=\"4; url=/\"/></head><body><font face='arial'><b><h2>Rebooting... returning in 4 seconds</h2></b></font></body></html>";
+}
+
+void handleReboot() {
+    webServer.send(200, "text/html", getRebootString());
+    delay(500);
+    ESP.restart();
+}
+
+
 void setup() {
   // put your setup code here, to run once:
-  #if DEBUG != 0
+  //#if DEBUG != 0
     Serial.begin(115200);
-  #endif
+  //#endif
+
+  if (!SPIFFS.begin ()) {
+        Serial.println(F("An Error has occurred while mounting SPIFFS"));
+        return;
+    }
+  
   // Turn Wifi off to minimize power consumption
-  WiFi.mode(WIFI_OFF);
+  //WiFi.mode(WIFI_OFF);
+
+  // setting up Wifi
+    String macID = WiFi.macAddress().substring(12, 14) +
+        WiFi.macAddress().substring(15, 17);
+    macID.toUpperCase();
+
+    String nameString = "BLE Keyboard";
+
+    char nameChar[nameString.length() + 1];
+    nameString.toCharArray(nameChar, sizeof(nameChar));
+
+    // setup wifiManager
+    wifiManager.setHostname("BLE_Keyboard"); // set hostname
+    wifiManager.setConfigPortalBlocking(false); // config portal is not blocking (LEDs light up in AP mode)
+    wifiManager.setSaveConfigCallback(handleReboot); // after the wireless settings have been saved a reboot will be performed
+    #if LED_DEBUG != 0
+        wifiManager.setDebugOutput(true);
+    #else
+        wifiManager.setDebugOutput(false);
+    #endif
+    //wifiManager.setConnectTimeout(70);
+
+    //wifiManager.setTimeout(80);
+
+    //automatically connect using saved credentials if they exist
+    //If connection fails it starts an access point with the specified name
+    if (wifiManager.autoConnect(nameChar)) {
+        Serial.println("INFO: Wi-Fi connected");
+    } else {
+        Serial.printf("INFO: Wi-Fi manager portal running. Connect to the Wi-Fi AP '%s' to configure your wireless connection\n", nameChar);
+        wifiMangerPortalRunning = true;
+    }
+  
   
   wakeupReason = get_wakeup_reason();
   
@@ -79,9 +142,38 @@ void setup() {
   bleKeyboard.begin();
   
   sleepTimerStart = millis();
+
+  webServer.serveStatic("/", SPIFFS, "/", "max-age=86400");
+
+  webServer.begin();
 }
 
 void loop() {
+  webServer.handleClient();
+
+  if (wifiMangerPortalRunning) {
+        wifiManager.process();
+   }
+   EVERY_N_SECONDS(1) {
+        Serial.println("N Sec");
+        int currentWifiStatus = wifiManager.getLastConxResult();
+        Serial.print(currentWifiStatus);
+        Serial.print(" ");
+        Serial.print(WiFi.localIP());
+        Serial.println("");
+        if (currentWifiStatus != WL_CONNECTED && !wifiMangerPortalRunning) {
+            Serial.println("Trying to connect to Wifi");
+            wifiConnected = false;
+        }
+        if (currentWifiStatus == WL_CONNECTED && !wifiConnected) {
+            wifiConnected = true;
+            Serial.print("INFO: WiFi Connected! Open http://");
+            Serial.print(WiFi.localIP());
+            Serial.println(" in your browser");
+            //wifiManager.resetSettings();
+        }
+   }
+  
   if (millis() > sleepTimerStart+timeToSleep)
   {
     SERIAL_DEBUG_LN("Going to sleep now");
