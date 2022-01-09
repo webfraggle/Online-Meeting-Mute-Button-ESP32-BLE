@@ -1,0 +1,61 @@
+{"options":[
+    {
+        "description": "Just Key A",
+        "index": 0
+    },
+    {
+        "description": "Win Teams ToggleMute Ctrl Shift M",
+        "index": 1
+    },
+    {
+        "description": "Mac Teams ToggleMute Cmd Shift M",
+        "index": 2
+    },
+    {
+        "description": "Win Zoom ToggleMute Alt A",
+        "index": 3
+    },
+    {
+        "description": "Mac Zoom ToggleMute Cmd Shift A",
+        "index": 4
+    },
+    {
+        "description": "Win Skype Webex ToggleMute Ctrl M",
+        "index": 5
+    },
+    {
+        "description": "Mac Skype Webex ToggleMute Cmd Shift M",
+        "index": 6
+    },
+    {
+        "description": "Win GoogleMeet ToggleMute Ctrl D",
+        "index": 7
+    },
+    {
+        "description": "Mac GoogleMeet ToggleMute Cmd D",
+        "index": 8
+    },
+    {
+        "description": "Win Mac Jitsi ToggleMute M",
+        "index": 9
+    },
+    {
+        "description": "Win BigBlueButton ToggleMute Alt Shift M",
+        "index": 10
+    },
+    {
+        "description": "Mac BigBlueButton ToggleMute Ctrl Option M",
+        "index": 11
+    },
+    {
+        "description": "Win Lock Screen Win L",
+        "index": 12
+    },
+    {
+        "description": "Mac Lock Screen Ctrl Cmd Q",
+        "index": 13
+    }
+],
+"settings":{"numButtons":4},
+"currentOptions":[13,2,5,3]
+}

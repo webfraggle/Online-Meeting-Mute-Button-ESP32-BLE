@@ -6,10 +6,13 @@
 
 #include "Arduino.h"
 
-struct KEYOPTION{
+#define NUM_OPTIONS 14
+#define NUM_BUTTONS 1
+
+typedef struct {
   String description;
   char keys[5];
-};
+} KEYOPTION;
 
 class Config
 {
@@ -18,8 +21,9 @@ class Config
     void loadCurrentOption();
     void next();
     void begin();
+    String getConfigJSON();
     KEYOPTION currentOption;
-    KEYOPTION _configOptions[15];
+    KEYOPTION _configOptions[NUM_OPTIONS];
     int currentOptionID;
 
   private:

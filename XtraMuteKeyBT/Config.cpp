@@ -95,6 +95,10 @@ void Config::next()
   SERIAL_DEBUG_LN(currentOptionID);
   currentOptionID = currentOptionID+1;
   SERIAL_DEBUG_LN(currentOptionID);
+  if (currentOptionID >= NUM_OPTIONS)
+  {
+    currentOptionID = 0;
+  }
   EEPROM.write(0, currentOptionID);
   EEPROM.commit();
   delay(10);
@@ -107,6 +111,14 @@ void Config::loadCurrentOption()
 {
 //  Serial.println("loadCurrentOption");
    currentOptionID = EEPROM.read(0);
+   if (currentOptionID >= NUM_OPTIONS)
+   {
+      SERIAL_DEBUG_LN("No correct item loaded");
+      currentOptionID = 0;
+      EEPROM.write(0, currentOptionID);
+      EEPROM.commit();
+      delay(10);
+   }
    SERIAL_DEBUG_LNF("after eeprom read %d",currentOptionID);
    delay(10);
    currentOption.keys[0] = 0;
@@ -116,15 +128,6 @@ void Config::loadCurrentOption()
    currentOption.keys[4] = 0;
    currentOption = _configOptions[currentOptionID];
    
-   if (currentOption.keys[0] == NULL)
-    {
-      SERIAL_DEBUG_LN("No correct item loaded");
-      currentOptionID = 0;
-      currentOption = _configOptions[currentOptionID];
-      EEPROM.write(0, currentOptionID);
-      EEPROM.commit();
-      delay(10);
-    }
 //  Serial.println(currentOptionID);
 //  Serial.println(_configOptions[0].description);
 //  Serial.println(_configOptions[0].keys[0]);
@@ -134,4 +137,19 @@ void Config::loadCurrentOption()
 //  Serial.println(sizeof(_configOptions[0].keys[0]));
 //  Serial.println("---");
   
+}
+
+String Config::getConfigJSON()
+{
+  String json = "{\"options\":[";
+  for (uint8_t i = 0; i < NUM_OPTIONS; i++) {
+     json += "{\"description\":\"" + _configOptions[i].description + "\",\"index\":" + i + "}";
+     if (i < NUM_OPTIONS - 1)
+      json += ",";
+  }
+  json += "]";
+  json += ",\"settings\":{\"numButtons\":"+String(NUM_BUTTONS)+"}";
+  json += ",\"currentOptions\":["+String(currentOptionID)+"]";
+  json += "}";
+  return json;
 }

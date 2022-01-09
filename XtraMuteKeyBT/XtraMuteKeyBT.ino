@@ -3,6 +3,7 @@
 #include <WiFi.h>
 #include <SPIFFS.h>
 #include <FastLED.h>
+
 #include "debug.h"
 #include "StateKeyboard.h"
 #include "StateConfig.h"
@@ -18,7 +19,8 @@ bool wifiMangerPortalRunning = false;
 bool wifiConnected = false;
 
 WebServer webServer(80);
-
+bool webServerActive = true;
+long timeToDeactivateWebServer = 1*60*1000;
 
 const int BUTTON_PIN = GPIO_NUM_33;
 const int LED_PIN = LED_BUILTIN;
@@ -40,6 +42,7 @@ StateConfig stateConfig(&bleKeyboard, &myconfig);
 char currentState = 0;
 // 0 = keyboard
 // 1 = config
+
 
 
 
@@ -84,8 +87,7 @@ void setup() {
         return;
     }
   
-  // Turn Wifi off to minimize power consumption
-  //WiFi.mode(WIFI_OFF);
+
 
   // setting up Wifi
     String macID = WiFi.macAddress().substring(12, 14) +
@@ -143,13 +145,22 @@ void setup() {
   
   sleepTimerStart = millis();
 
+  webServer.on("/config.json", HTTP_GET, []() {
+    String json = myconfig.getConfigJSON();
+    webServer.send(200, "application/json", json);
+   });
+
   webServer.serveStatic("/", SPIFFS, "/", "max-age=86400");
 
   webServer.begin();
 }
 
 void loop() {
-  webServer.handleClient();
+
+
+  if (webServerActive){
+    webServer.handleClient();
+  }
 
   if (wifiMangerPortalRunning) {
         wifiManager.process();
@@ -161,6 +172,8 @@ void loop() {
         Serial.print(" ");
         Serial.print(WiFi.localIP());
         Serial.println("");
+        Serial.print("webServerActive");
+        Serial.println(webServerActive);
         if (currentWifiStatus != WL_CONNECTED && !wifiMangerPortalRunning) {
             Serial.println("Trying to connect to Wifi");
             wifiConnected = false;
@@ -178,6 +191,14 @@ void loop() {
   {
     SERIAL_DEBUG_LN("Going to sleep now");
     esp_deep_sleep_start();
+  }
+  if (millis() > timeToDeactivateWebServer)
+  {
+    // Turn Wifi off to minimize power consumption
+    WiFi.mode(WIFI_OFF);
+    webServerActive = false;
+    webServer.stop();
+    webServer.close();
   }
   if(!bleKeyboard.isConnected()) {
     digitalWrite(LED_PIN, HIGH); // on wemos lolin32 high is off
