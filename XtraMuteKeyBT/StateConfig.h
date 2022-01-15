@@ -12,7 +12,7 @@ class StateConfig
 {
   public:
     StateConfig(BleKeyboard *bleKeyboard, Config *myconfig);
-    void executeKey();
+    void executeKey(uint8_t id);
     void startMode();
     void endMode();
   private:

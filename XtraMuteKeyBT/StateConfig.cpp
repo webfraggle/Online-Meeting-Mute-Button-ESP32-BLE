@@ -34,7 +34,7 @@ void StateConfig::endMode()
   //_bleKeyboard->print(_config->currentOption.description);
 }
 
-void StateConfig::executeKey()
+void StateConfig::executeKey(uint8_t id)
 {
   SERIAL_DEBUG_LN("StateConfig execute");
   _config->next();

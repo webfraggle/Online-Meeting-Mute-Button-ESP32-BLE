@@ -6,8 +6,8 @@
 
 #include "Arduino.h"
 
-#define NUM_OPTIONS 14
-#define NUM_BUTTONS 1
+#define NUM_OPTIONS 16
+#define NUM_BUTTONS 4
 
 typedef struct {
   String description;
@@ -19,12 +19,14 @@ class Config
   public:
     Config();
     void loadCurrentOption();
+    KEYOPTION getOptionById(uint8_t btnID);
+    void saveConfigForBtn(int btnId, int optionId);
     void next();
     void begin();
     String getConfigJSON();
     KEYOPTION currentOption;
     KEYOPTION _configOptions[NUM_OPTIONS];
-    int currentOptionID;
+    byte currentOptionID;
 
   private:
     

@@ -20,18 +20,21 @@ bool wifiConnected = false;
 
 WebServer webServer(80);
 bool webServerActive = true;
+long webTimerStart = 0;
 long timeToDeactivateWebServer = 1*60*1000;
 
-const int BUTTON_PIN = GPIO_NUM_33;
+int BUTTON_PINS[NUM_BUTTONS] = {GPIO_NUM_33,GPIO_NUM_32,GPIO_NUM_35,GPIO_NUM_34};
+//const int BUTTON_PIN = GPIO_NUM_33;
 const int LED_PIN = LED_BUILTIN;
 long sleepTimerStart = 0;
+
 long timeToSleep = 15*60*1000;
 boolean bleConnected = false;
 
 byte wakeupReason = 0;
 
 
-AceButton button(BUTTON_PIN);
+AceButton buttons[NUM_BUTTONS];
 void handleEvent(AceButton*, uint8_t, uint8_t);
 
 BleKeyboard bleKeyboard;
@@ -124,13 +127,19 @@ void setup() {
   
   wakeupReason = get_wakeup_reason();
   
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
 
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_33,0); //1 = High, 0 = Low
+
+  for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
+    // Button uses the built-in pull up register.
+    pinMode(BUTTON_PINS[i], INPUT_PULLUP);
+    // initialize the corresponding AceButton
+    buttons[i].init(BUTTON_PINS[i], HIGH, i);
+  }
   
-  button.setEventHandler(handleEvent);
+  //button.setEventHandler(handleEvent);
   // Configure the ButtonConfig with the event handler.
   ButtonConfig* buttonConfig = ButtonConfig::getSystemButtonConfig();
   buttonConfig->setEventHandler(handleEvent);
@@ -148,7 +157,17 @@ void setup() {
   webServer.on("/config.json", HTTP_GET, []() {
     String json = myconfig.getConfigJSON();
     webServer.send(200, "application/json", json);
+    webTimerStart = millis();
    });
+   webServer.on("/save", HTTP_POST, []() {
+        int btnId = webServer.arg("btnId").toInt();
+        int optionId = webServer.arg("optionId").toInt();
+        myconfig.saveConfigForBtn(btnId, optionId);
+        
+        
+        webServer.send(200, "text/json", "{\"btnId\":\"" + String(btnId) + "\",\"optionId\":" + String(optionId) + "}");
+        webTimerStart = millis();
+        });
 
   webServer.serveStatic("/", SPIFFS, "/", "max-age=86400");
 
@@ -172,7 +191,7 @@ void loop() {
         Serial.print(" ");
         Serial.print(WiFi.localIP());
         Serial.println("");
-        Serial.print("webServerActive");
+        Serial.print("webServerActive: ");
         Serial.println(webServerActive);
         if (currentWifiStatus != WL_CONNECTED && !wifiMangerPortalRunning) {
             Serial.println("Trying to connect to Wifi");
@@ -192,7 +211,7 @@ void loop() {
     SERIAL_DEBUG_LN("Going to sleep now");
     esp_deep_sleep_start();
   }
-  if (millis() > timeToDeactivateWebServer)
+  if (millis() > webTimerStart+timeToDeactivateWebServer)
   {
     // Turn Wifi off to minimize power consumption
     WiFi.mode(WIFI_OFF);
@@ -215,21 +234,25 @@ void loop() {
     {
       delay(500);
       //executeKeyPress();
-      stateKeyboard.executeKey();
+      stateKeyboard.executeKey(0);
       wakeupReason = 0;
     }
   }
   bleConnected = bleKeyboard.isConnected();
-  button.check();
+  //button.check();
+  for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
+    buttons[i].check();
+  }
 }
 
 
-void handleEvent(AceButton* /*button*/, uint8_t eventType,
-    uint8_t /*buttonState*/) {
+void handleEvent(AceButton* button, uint8_t eventType,
+    uint8_t buttonState) {
   sleepTimerStart = millis();
+  uint8_t id = button->getId();
   SERIAL_DEBUG_LN("AceButton handleEvent");
   SERIAL_DEBUG_LNF("eventType: %d", eventType);
-
+  SERIAL_DEBUG_LNF("btn id: %d", id);
   switch (eventType) {
     case AceButton::kEventLongPressed:
       SERIAL_DEBUG_LN("kEventLongPressed");
@@ -253,10 +276,10 @@ void handleEvent(AceButton* /*button*/, uint8_t eventType,
       switch (currentState)
       {
         case 0:
-          stateKeyboard.executeKey();
+          stateKeyboard.executeKey(id);
         break;
         case 1:
-          stateConfig.executeKey();
+          stateConfig.executeKey(id);
         break;
       }
       break;

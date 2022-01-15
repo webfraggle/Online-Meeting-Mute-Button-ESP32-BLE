@@ -56,13 +56,20 @@ function addButton(btnNr, options, selectedIndex) {
     select.change(function() {
         var value = template.find("#" + id + " option:selected").index();
       console.log(btnNr, value);
-    //   postValue(field.name, value);
-    //   if (field.name == "pattern") {
-    //     updateDisplayedFields(value);
-    //   }
+      saveBtn(btnNr, value);
     });
   
     
   
     $("#form").append(template);
+  }
+
+  function saveBtn(btnId, value) {
+    $("#status").html("Saving Button " + btnId + ": " + value + ", please wait...");
+  
+    var body = { btnId: btnId, optionId: value };
+  
+    $.post("/save", body, function(data) {
+        $("#status").html("Hopefully saved!");
+    });
   }

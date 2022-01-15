@@ -17,67 +17,70 @@ Config::Config()
   //_configOptions[i].keys[2] = 'M';
   
   i++;
-  _configOptions[i].description = "Win Teams ToggleMute Ctrl Shift M";
+  _configOptions[i].description = "Win Teams: Toggle Mute 'Ctrl Shift M'";
   _configOptions[i].keys[0] = KEY_LEFT_CTRL;
   _configOptions[i].keys[1] = KEY_LEFT_SHIFT;
   _configOptions[i].keys[2] = 'm';
   i++;
-  _configOptions[i].description = "Mac Teams ToggleMute Cmd Shift M";
-  _configOptions[i].keys[0] = KEY_LEFT_GUI;
+  _configOptions[i].description = "Win Teams: Toggle Video 'Ctrl Shift O'";
+  _configOptions[i].keys[0] = KEY_LEFT_CTRL;
   _configOptions[i].keys[1] = KEY_LEFT_SHIFT;
-  _configOptions[i].keys[2] = 'm';
+  _configOptions[i].keys[2] = 'o';
   i++;
-  _configOptions[i].description = "Win Zoom ToggleMute Alt A";
+  _configOptions[i].description = "Win Teams: End Call 'Ctrl Shift H'";
+  _configOptions[i].keys[0] = KEY_LEFT_CTRL;
+  _configOptions[i].keys[1] = KEY_LEFT_SHIFT;
+  _configOptions[i].keys[2] = 'h';
+  i++;
+  _configOptions[i].description = "Win Zoom: Toggle 'Mute Alt A'";
   _configOptions[i].keys[0] = KEY_LEFT_ALT;
   _configOptions[i].keys[1] = 'a';
   i++;
-  _configOptions[i].description = "Mac Zoom ToggleMute Cmd Shift A";
-  _configOptions[i].keys[0] = KEY_LEFT_GUI;
-  _configOptions[i].keys[1] = KEY_LEFT_SHIFT;
-  _configOptions[i].keys[2] = 'a';
-
-    i++;
-  _configOptions[i].description = "Win Skype Webex ToggleMute Ctrl M";
+  _configOptions[i].description = "Win Skype/Webex: Toggle Mute 'Ctrl M'";
   _configOptions[i].keys[0] = KEY_LEFT_CTRL;
   _configOptions[i].keys[1] = 'm';
-    i++;
-  _configOptions[i].description = "Mac Skype Webex ToggleMute Cmd Shift M";
-  _configOptions[i].keys[0] = KEY_LEFT_GUI;
-  _configOptions[i].keys[1] = KEY_LEFT_SHIFT;
-  _configOptions[i].keys[2] = 'm';
-
   i++;
-  _configOptions[i].description = "Win GoogleMeet ToggleMute Ctrl D";
+  _configOptions[i].description = "Win GoogleMeet: Toggle Mute 'Ctrl D'";
   _configOptions[i].keys[0] = KEY_LEFT_CTRL;
   _configOptions[i].keys[1] = 'd';
   i++;
-  _configOptions[i].description = "Mac GoogleMeet ToggleMute Cmd D";
-  _configOptions[i].keys[0] = KEY_LEFT_GUI;
-  _configOptions[i].keys[1] = 'd';
-
-  i++;
-  _configOptions[i].description = "Win Mac Jitsi ToggleMute M";
+  _configOptions[i].description = "Win Mac Jitsi: Toggle 'Mute M'";
   _configOptions[i].keys[0] = 'm';
-
   i++;
-  _configOptions[i].description = "Win BigBlueButton ToggleMute Alt Shift M";
+  _configOptions[i].description = "Win BigBlueButton: Toggle Mute Alt 'Shift M'";
   _configOptions[i].keys[0] = KEY_LEFT_ALT;
   _configOptions[i].keys[1] = KEY_LEFT_SHIFT;
   _configOptions[i].keys[2] = 'm';
-
-    i++;
-  _configOptions[i].description = "Mac BigBlueButton ToggleMute Ctrl Option M";
+  i++;
+  _configOptions[i].description = "Win: Lock Screen 'Win L'";
+  _configOptions[i].keys[0] = KEY_LEFT_GUI;
+  _configOptions[i].keys[1] = 'l';
+  i++;
+  _configOptions[i].description = "Mac Teams: Toggle Mute 'Cmd Shift M'";
+  _configOptions[i].keys[0] = KEY_LEFT_GUI;
+  _configOptions[i].keys[1] = KEY_LEFT_SHIFT;
+  _configOptions[i].keys[2] = 'm';
+  i++;
+  _configOptions[i].description = "Mac Zoom: Toggle Mute 'Cmd Shift A'";
+  _configOptions[i].keys[0] = KEY_LEFT_GUI;
+  _configOptions[i].keys[1] = KEY_LEFT_SHIFT;
+  _configOptions[i].keys[2] = 'a';
+  i++;
+  _configOptions[i].description = "Mac Skype/Webex: Toggle Mute 'Cmd Shift M'";
+  _configOptions[i].keys[0] = KEY_LEFT_GUI;
+  _configOptions[i].keys[1] = KEY_LEFT_SHIFT;
+  _configOptions[i].keys[2] = 'm';
+  i++;
+  _configOptions[i].description = "Mac GoogleMeet: Toggle Mute 'Cmd D'";
+  _configOptions[i].keys[0] = KEY_LEFT_GUI;
+  _configOptions[i].keys[1] = 'd';
+  i++;
+  _configOptions[i].description = "Mac BigBlueButton: Toggle Mute 'Ctrl Option M'";
   _configOptions[i].keys[0] = KEY_LEFT_CTRL;
   _configOptions[i].keys[1] = KEY_LEFT_ALT;
   _configOptions[i].keys[2] = 'm';
-
   i++;
-  _configOptions[i].description = "Win Lock Screen Win L";
-  _configOptions[i].keys[0] = KEY_LEFT_GUI;
-  _configOptions[i].keys[1] = 'l';
-
-      i++;
-  _configOptions[i].description = "Mac Lock Screen Ctrl Cmd Q";
+  _configOptions[i].description = "Mac: Lock Screen 'Ctrl Cmd Q'";
   _configOptions[i].keys[0] = KEY_LEFT_CTRL;
   _configOptions[i].keys[1] = KEY_LEFT_GUI;
   _configOptions[i].keys[2] = 'q';
@@ -86,7 +89,7 @@ Config::Config()
 
 void Config::begin()
 {
-  EEPROM.begin(1);
+  EEPROM.begin(NUM_BUTTONS);
   loadCurrentOption();
 }
 void Config::next()
@@ -107,6 +110,19 @@ void Config::next()
   SERIAL_DEBUG_LN(currentOption.description); 
 }
 
+KEYOPTION Config::getOptionById(uint8_t btnID)
+{
+  byte optionID = EEPROM.read(btnID);
+  return _configOptions[optionID];
+}
+void Config::saveConfigForBtn(int btnId, int optionId)
+{
+  EEPROM.write(btnId, optionId);
+  EEPROM.commit();
+  delay(10);
+}
+
+        
 void Config::loadCurrentOption()
 {
 //  Serial.println("loadCurrentOption");
@@ -149,7 +165,14 @@ String Config::getConfigJSON()
   }
   json += "]";
   json += ",\"settings\":{\"numButtons\":"+String(NUM_BUTTONS)+"}";
-  json += ",\"currentOptions\":["+String(currentOptionID)+"]";
+  json += ",\"currentOptions\":[";
+  for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
+    byte optionID = EEPROM.read(i);
+    json += String(optionID);
+    if (i < NUM_BUTTONS - 1)
+      json += ",";
+  }
+  json += "]";
   json += "}";
   return json;
 }
