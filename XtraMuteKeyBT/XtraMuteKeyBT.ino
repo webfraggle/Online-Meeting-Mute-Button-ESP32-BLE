@@ -1,3 +1,4 @@
+//#define USE_NIMBLE
 #include <BleKeyboard.h>
 #include <AceButton.h>
 #include <WiFi.h>
@@ -21,14 +22,16 @@ bool wifiConnected = false;
 WebServer webServer(80);
 bool webServerActive = true;
 long webTimerStart = 0;
-long timeToDeactivateWebServer = 1*60*1000;
+long timeToDeactivateWebServer = 10 * 60 * 1000;
+long timeToSleep = 2 * 60 * 1000;
 
-int BUTTON_PINS[NUM_BUTTONS] = {GPIO_NUM_33,GPIO_NUM_32,GPIO_NUM_35,GPIO_NUM_34};
+int BUTTON_PINS[NUM_BUTTONS] = {GPIO_NUM_2, GPIO_NUM_16, GPIO_NUM_5, GPIO_NUM_23};
+int LED_PINS[NUM_BUTTONS] = {GPIO_NUM_15, GPIO_NUM_4, GPIO_NUM_17, GPIO_NUM_18};
 //const int BUTTON_PIN = GPIO_NUM_33;
 const int LED_PIN = LED_BUILTIN;
 long sleepTimerStart = 0;
 
-long timeToSleep = 15*60*1000;
+
 boolean bleConnected = false;
 
 byte wakeupReason = 0;
@@ -49,12 +52,12 @@ char currentState = 0;
 
 
 
-byte get_wakeup_reason(){
+byte get_wakeup_reason() {
   esp_sleep_wakeup_cause_t wakeup_reason;
 
   wakeup_reason = esp_sleep_get_wakeup_cause();
 
-  switch(wakeup_reason)
+  switch (wakeup_reason)
   {
     case ESP_SLEEP_WAKEUP_EXT0 : return ESP_SLEEP_WAKEUP_EXT0; break;
     case ESP_SLEEP_WAKEUP_EXT1 : return ESP_SLEEP_WAKEUP_EXT1; break;
@@ -69,105 +72,113 @@ byte get_wakeup_reason(){
 // ######################## web server functions #########################
 
 String getRebootString() {
-    return "<html><head><meta http-equiv=\"refresh\" content=\"4; url=/\"/></head><body><font face='arial'><b><h2>Rebooting... returning in 4 seconds</h2></b></font></body></html>";
+  return "<html><head><meta http-equiv=\"refresh\" content=\"4; url=/\"/></head><body><font face='arial'><b><h2>Rebooting... returning in 4 seconds</h2></b></font></body></html>";
 }
 
 void handleReboot() {
-    webServer.send(200, "text/html", getRebootString());
-    delay(500);
-    ESP.restart();
+  webServer.send(200, "text/html", getRebootString());
+  delay(500);
+  ESP.restart();
 }
 
 
 void setup() {
   // put your setup code here, to run once:
   //#if DEBUG != 0
-    Serial.begin(115200);
+  Serial.begin(115200);
   //#endif
 
   if (!SPIFFS.begin ()) {
-        Serial.println(F("An Error has occurred while mounting SPIFFS"));
-        return;
-    }
-  
+    Serial.println(F("An Error has occurred while mounting SPIFFS"));
+    return;
+  }
+
 
 
   // setting up Wifi
-    String macID = WiFi.macAddress().substring(12, 14) +
-        WiFi.macAddress().substring(15, 17);
-    macID.toUpperCase();
+  String macID = WiFi.macAddress().substring(12, 14) +
+                 WiFi.macAddress().substring(15, 17);
+  macID.toUpperCase();
 
-    String nameString = "BLE Keyboard";
+  String nameString = "BLE Keyboard";
 
-    char nameChar[nameString.length() + 1];
-    nameString.toCharArray(nameChar, sizeof(nameChar));
+  char nameChar[nameString.length() + 1];
+  nameString.toCharArray(nameChar, sizeof(nameChar));
 
-    // setup wifiManager
-    wifiManager.setHostname("BLE_Keyboard"); // set hostname
-    wifiManager.setConfigPortalBlocking(false); // config portal is not blocking (LEDs light up in AP mode)
-    wifiManager.setSaveConfigCallback(handleReboot); // after the wireless settings have been saved a reboot will be performed
-    #if LED_DEBUG != 0
-        wifiManager.setDebugOutput(true);
-    #else
-        wifiManager.setDebugOutput(false);
-    #endif
-    //wifiManager.setConnectTimeout(70);
+  // setup wifiManager
+  wifiManager.setHostname("BLE_Keyboard"); // set hostname
+  wifiManager.setConfigPortalBlocking(false); // config portal is not blocking (LEDs light up in AP mode)
+  wifiManager.setSaveConfigCallback(handleReboot); // after the wireless settings have been saved a reboot will be performed
+#if LED_DEBUG != 0
+  wifiManager.setDebugOutput(true);
+#else
+  wifiManager.setDebugOutput(false);
+#endif
+  //wifiManager.setConnectTimeout(70);
 
-    //wifiManager.setTimeout(80);
+  //wifiManager.setTimeout(80);
 
-    //automatically connect using saved credentials if they exist
-    //If connection fails it starts an access point with the specified name
-    if (wifiManager.autoConnect(nameChar)) {
-        Serial.println("INFO: Wi-Fi connected");
-    } else {
-        Serial.printf("INFO: Wi-Fi manager portal running. Connect to the Wi-Fi AP '%s' to configure your wireless connection\n", nameChar);
-        wifiMangerPortalRunning = true;
-    }
-  
-  
+  //automatically connect using saved credentials if they exist
+  //If connection fails it starts an access point with the specified name
+  if (wifiManager.autoConnect(nameChar)) {
+    Serial.println("INFO: Wi-Fi connected");
+  } else {
+    Serial.printf("INFO: Wi-Fi manager portal running. Connect to the Wi-Fi AP '%s' to configure your wireless connection\n", nameChar);
+    wifiMangerPortalRunning = true;
+  }
+
+
   wakeupReason = get_wakeup_reason();
-  
+
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
 
-  esp_sleep_enable_ext0_wakeup(GPIO_NUM_33,0); //1 = High, 0 = Low
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_2, 0); //1 = High, 0 = Low
 
   for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
     // Button uses the built-in pull up register.
     pinMode(BUTTON_PINS[i], INPUT_PULLUP);
+    pinMode(LED_PINS[i], OUTPUT);
+    digitalWrite(LED_PINS[i], LOW);
     // initialize the corresponding AceButton
     buttons[i].init(BUTTON_PINS[i], HIGH, i);
   }
-  
+
   //button.setEventHandler(handleEvent);
   // Configure the ButtonConfig with the event handler.
   ButtonConfig* buttonConfig = ButtonConfig::getSystemButtonConfig();
   buttonConfig->setEventHandler(handleEvent);
-  buttonConfig->setFeature(ButtonConfig::kFeatureLongPress);
+  //buttonConfig->setFeature(ButtonConfig::kFeatureLongPress);
   //buttonConfig->setFeature(ButtonConfig::kFeatureRepeatPress);
-  buttonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterLongPress);
+  //buttonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterLongPress);
 
   myconfig.begin();
-  bleKeyboard.setName("SingleButton Keyboard");
+  bleKeyboard.setName("MultiButton Keyboard");
   bleKeyboard.setDelay(50);
   bleKeyboard.begin();
-  
+
   sleepTimerStart = millis();
 
   webServer.on("/config.json", HTTP_GET, []() {
     String json = myconfig.getConfigJSON();
     webServer.send(200, "application/json", json);
     webTimerStart = millis();
-   });
-   webServer.on("/save", HTTP_POST, []() {
-        int btnId = webServer.arg("btnId").toInt();
-        int optionId = webServer.arg("optionId").toInt();
-        myconfig.saveConfigForBtn(btnId, optionId);
-        
-        
-        webServer.send(200, "text/json", "{\"btnId\":\"" + String(btnId) + "\",\"optionId\":" + String(optionId) + "}");
-        webTimerStart = millis();
-        });
+  });
+  webServer.on("/restart", HTTP_GET, []() {
+    webServer.send(200, "text/plain", "Reboot");
+    ESP.restart();
+    webTimerStart = millis();
+  });
+
+  webServer.on("/save", HTTP_POST, []() {
+    int btnId = webServer.arg("btnId").toInt();
+    int optionId = webServer.arg("optionId").toInt();
+    myconfig.saveConfigForBtn(btnId, optionId);
+
+
+    webServer.send(200, "text/json", "{\"btnId\":\"" + String(btnId) + "\",\"optionId\":" + String(optionId) + "}");
+    webTimerStart = millis();
+  });
 
   webServer.serveStatic("/", SPIFFS, "/", "max-age=86400");
 
@@ -177,41 +188,41 @@ void setup() {
 void loop() {
 
 
-  if (webServerActive){
+  if (webServerActive) {
     webServer.handleClient();
   }
 
   if (wifiMangerPortalRunning) {
-        wifiManager.process();
-   }
-   EVERY_N_SECONDS(1) {
-        Serial.println("N Sec");
-        int currentWifiStatus = wifiManager.getLastConxResult();
-        Serial.print(currentWifiStatus);
-        Serial.print(" ");
-        Serial.print(WiFi.localIP());
-        Serial.println("");
-        Serial.print("webServerActive: ");
-        Serial.println(webServerActive);
-        if (currentWifiStatus != WL_CONNECTED && !wifiMangerPortalRunning) {
-            Serial.println("Trying to connect to Wifi");
-            wifiConnected = false;
-        }
-        if (currentWifiStatus == WL_CONNECTED && !wifiConnected) {
-            wifiConnected = true;
-            Serial.print("INFO: WiFi Connected! Open http://");
-            Serial.print(WiFi.localIP());
-            Serial.println(" in your browser");
-            //wifiManager.resetSettings();
-        }
-   }
-  
-  if (millis() > sleepTimerStart+timeToSleep)
+    wifiManager.process();
+  }
+  EVERY_N_SECONDS(1) {
+    //Serial.println("N Sec");
+    int currentWifiStatus = wifiManager.getLastConxResult();
+    Serial.print(currentWifiStatus);
+    Serial.print(" ");
+    Serial.print(WiFi.localIP());
+    Serial.print(" ");
+    Serial.print("webServerActive: ");
+    Serial.println(webServerActive);
+    if (currentWifiStatus != WL_CONNECTED && !wifiMangerPortalRunning) {
+      Serial.println("Trying to connect to Wifi");
+      wifiConnected = false;
+    }
+    if (currentWifiStatus == WL_CONNECTED && !wifiConnected) {
+      wifiConnected = true;
+      Serial.print("INFO: WiFi Connected! Open http://");
+      Serial.print(WiFi.localIP());
+      Serial.println(" in your browser");
+      //wifiManager.resetSettings();
+    }
+  }
+
+  if (millis() > sleepTimerStart + timeToSleep)
   {
     SERIAL_DEBUG_LN("Going to sleep now");
     esp_deep_sleep_start();
   }
-  if (millis() > webTimerStart+timeToDeactivateWebServer)
+  if (millis() > webTimerStart + timeToDeactivateWebServer)
   {
     // Turn Wifi off to minimize power consumption
     WiFi.mode(WIFI_OFF);
@@ -219,14 +230,14 @@ void loop() {
     webServer.stop();
     webServer.close();
   }
-  if(!bleKeyboard.isConnected()) {
+  if (!bleKeyboard.isConnected()) {
     digitalWrite(LED_PIN, HIGH); // on wemos lolin32 high is off
     return;
   } else {
     digitalWrite(LED_PIN, LOW);
   }
-  // check fresh connection 
-  if(bleKeyboard.isConnected() && !bleConnected) {
+  // check fresh connection
+  if (bleKeyboard.isConnected() && !bleConnected) {
     SERIAL_DEBUG_EOL
     SERIAL_DEBUG_LN("fresh connection");
     SERIAL_DEBUG_LN(wakeupReason == ESP_SLEEP_WAKEUP_EXT0);
@@ -247,7 +258,7 @@ void loop() {
 
 
 void handleEvent(AceButton* button, uint8_t eventType,
-    uint8_t buttonState) {
+                 uint8_t buttonState) {
   sleepTimerStart = millis();
   uint8_t id = button->getId();
   SERIAL_DEBUG_LN("AceButton handleEvent");
@@ -256,8 +267,9 @@ void handleEvent(AceButton* button, uint8_t eventType,
   switch (eventType) {
     case AceButton::kEventLongPressed:
       SERIAL_DEBUG_LN("kEventLongPressed");
-      switch (currentState)
-      {
+      /*
+        switch (currentState)
+        {
         case 0:
           currentState = 1;
           stateConfig.startMode();
@@ -266,21 +278,24 @@ void handleEvent(AceButton* button, uint8_t eventType,
           stateConfig.endMode();
           currentState = 0;
         break;
-      }
+        }*/
       break;
     case AceButton::kEventPressed:
       SERIAL_DEBUG_LN("kEventPressed");
+      // handle LEDs
+      digitalWrite(LED_PINS[id], HIGH);
       break;
     case AceButton::kEventReleased:
       SERIAL_DEBUG_LN("kEventReleased");
+      digitalWrite(LED_PINS[id], LOW);
       switch (currentState)
       {
         case 0:
           stateKeyboard.executeKey(id);
-        break;
+          break;
         case 1:
           stateConfig.executeKey(id);
-        break;
+          break;
       }
       break;
   }
